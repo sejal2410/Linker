@@ -16,11 +16,10 @@ const char* DELIM = " \t\n\r\v\f";
 char* tok;
 char line[1024];
 bool eofFlag=false;
-map<string, vector<int>> symtable;
+map<string, vector<int> > symtable;
 set<string> def_used;
 set<string> used_throughout;
 int memory_map_len=0;
-
 bool validSym(char *c);
 bool validInstruction(char *c);
 void Pass2();
@@ -35,7 +34,6 @@ void __parseerror(int errcode) {
             "TOO_MANY_USE_IN_MODULE", // > 16
             "TOO_MANY_INSTR", // total num_instr exceeds memory size (512)
     };
-    //cout  << errstr[errcode] << endl;
     printf("Parse Error line %d offset %d: %s\n", linenum,lineoffset,errstr[errcode]);
     exit(-1);
 }
@@ -44,52 +42,39 @@ char * getToken()
 {
     while(!eofFlag) {
         if (tok==NULL) {
-
             if (fgets(line, 1024, file) == NULL) {
-                //cout << "end of file" << endl;
                 lineoffset = lineoffset + tokenlength;
                 eofFlag = true;
                 return NULL;
-            } // EOF reached
-//            if((strcmp(line,"\n") == 0)||(strcmp(line,"\r\n") == 0)||(strcmp(line,"\0") == 0)){
-//                //cout << "blank line" << endl;
-//                lineoffset = 1;
-//                linenum ++;
-//                tokenlength = 0;
-//                //lineoffset = 1;
-//                continue;
-//                return NULL;
-//            } // if blank line go to next line;
+            }
+            if((strcmp(line,"\r\n") == 0)||(strcmp(line,"\0") == 0)||(strcmp(line,"\n") == 0)){
+                tokenlength = 0;
+                linenum ++;
+                lineoffset = 1;
+                continue;
+            }
             linenum++;
             tok = strtok(line, DELIM);
             if (tok == NULL) // no tokens in line
                 continue; // we try with next line
-           // newLine = false;
             tokenlength = strlen(tok);
             lineoffset = tok - line + 1;
-           // cout<<"Token is in first check: "<<tok<<"\n";
             return tok;
         }
-         tok = strtok(NULL, DELIM);
-
-        //linelen = strlen(tok);
+        tok = strtok(NULL, DELIM);
         if (tok != NULL){
-           // lineoffset = tok - line + 1;
+            lineoffset = tok - line + 1;
             tokenlength = strlen(tok);// found a token
-           // cout<<"Token is: "<<tok;
-            return tok;
+           return tok;
         }
-
     }
-
 }
 bool isNum(char* s){
-    char * t; // first copy the pointer to not change the original
-    if(*t=='\0') {
+    char * t;
+    if(s==NULL) {
         return false;
     }
     for (t = s; *t != '\0'; t++) {
-
         if(!isdigit(*t)) return false;
     }
     return true;
@@ -101,11 +86,8 @@ int readInt() {
     try {
     if (isNum(c)) {
         int n = atoi(c);
-        //cout<<"Number is: "<<n<<"\n";
         return n;
-
     } else if(eofFlag){
-
     }
         __parseerror(0);
     }
@@ -116,10 +98,8 @@ int readInt() {
 
 char* readSym(){
     char* c = getToken();
-
     if (validSym(c)){
-      //  printf("symbol got is: %s \n",c);
-        return c;
+      return c;
     }
     else {
         __parseerror(1);
@@ -128,7 +108,7 @@ char* readSym(){
 
 bool validSym(char *s) {
     char * t = s;
-    if(*t=='\0') {
+    if(s==NULL) {
         return false;
     }
     if(!isalpha(*t)) {
@@ -151,8 +131,7 @@ bool validSym(char *s) {
 char readIAER(){
     char* c = getToken();
     if(validInstruction(c)){
-       // printf("Instr got is: %s \n",c);
-        return *c;
+       return *c;
     }
     else {
         __parseerror(2);
@@ -160,9 +139,10 @@ char readIAER(){
 }
 
 bool validInstruction(char *c) {
-
-  //  printf("Instr got is: %s \n",c);
     char * t = c;
+    if(c==NULL) {
+        return false;
+    }
     int size =0;
     if(*t=='\0') {
         return false;
@@ -176,12 +156,11 @@ bool validInstruction(char *c) {
     if(size>1 || !(*c=='R'|| *c=='E'|| *c=='I'|| *c=='A')) {
         return false;
     }
-   // printf("Size is %d", size);
-    return true;
+   return true;
 }
 
 void Pass1() {
-    int baseAdd=0;
+    int baseAdd;
     int moduleNu=0;
     int prevMAdd=0, prevML=0;
     while (!eofFlag) {
@@ -192,20 +171,16 @@ void Pass1() {
             __parseerror(4);
         }
         if(defcount==-1 && eofFlag) break;
-        //printf("debug result %d::  %d\n", moduleNu,baseAdd);
-        if (eofFlag) break;
+        if (eofFlag) {break;}
+        vector<pair<string,int> > symbolDecla;
         for (int i = 0; i < defcount; i++) {
             char* sym = readSym();
             int val = readInt();
             if (symtable.count(sym)==1){
-               // cout<<'\t'<<"symnol declared before";
-                def_used.insert(sym); //symbol declared before
+               def_used.insert(sym); //symbol declared before
             }
             else{
-                vector<int> add_mod;
-                add_mod.push_back(moduleNu);
-                add_mod.push_back(baseAdd+val);
-                symtable.insert(pair<string, vector<int>>(sym, add_mod));
+                symbolDecla.push_back(pair<string, int> (sym,val));
             }
         }
         int usecount = readInt();
@@ -214,7 +189,6 @@ void Pass1() {
         }
         for (int i = 0; i < usecount; i++) {
             char* sym = readSym();
-           // printf("Here: %s \n",sym);// we don’t do anything here   this would change in pass2
         }
         int instcount = readInt();
         if(instcount + baseAdd>=512){
@@ -227,10 +201,24 @@ void Pass1() {
         }
         prevMAdd = baseAdd;
         prevML = instcount;
+        vector< pair<string, int> >::iterator it;
+        for (it = symbolDecla.begin(); it != symbolDecla.end(); it++) { //Rule 5
+            int val=0;
+            if(it->second<instcount){
+                val = it->second;
+            }
+            else{
+                printf("Warning: Module %d: %s too big %d (max=%d) assume zero relative\n",
+                       moduleNu,it->first.c_str(),it->second,instcount-1);
+            }
+            vector<int> add_mod;
+            add_mod.push_back(moduleNu);
+            add_mod.push_back(baseAdd+val);
+            symtable.insert(pair<string, vector<int> >(it->first, add_mod));
+        }
     }
-    map<string, vector<int>>::iterator it;
-
-    printf("Symbol Table\n");
+    map<string, vector<int> >::iterator it;
+    printf("Symbol Table"); //No line after symbol table
     //bool err=false;
     for (it = symtable.begin(); it != symtable.end(); it++) {
         if(def_used.count(it->first)){
@@ -240,39 +228,32 @@ void Pass1() {
         else{
             errstring="";
         }
-        printf("%s=%d %s\n",it->first.c_str(),it->second[1],errstring.c_str());
+        printf("\n%s=%d",it->first.c_str(),it->second[1]);
+        if(!errstring.empty())
+            printf(" %s",errstring.c_str());
     }
-
 }
 
 void Pass2() {
     errstring="";
-    int baseAdd;
+    int baseAdd=0;
     int moduleNu=0;
     int prevMAdd=0, prevML=0;
-    printf("Memory Map\n");
+    printf("\n\nMemory Map");
     while (!eofFlag) {
         moduleNu++;
         baseAdd = prevMAdd+prevML;
         int defcount = readInt();
         if(defcount==-1 && eofFlag) break;
-       // printf("debug result %d::  %d\n", moduleNu,baseAdd);
-        if (eofFlag) break;
+       if (eofFlag) break;
         for (int i = 0; i < defcount; i++) {
             char* sym = readSym();
             int val = readInt();
-//            if (symtable.count(sym)==1){
-////                cout<<'\t'<<"symbol declared before";
-////            }
-////            else{
-////                symtable[sym] = val;
-////            }
         }
         vector<string> uselist_symbols;
         int usecount = readInt();
         for (int i = 0; i < usecount; i++) {
             char* sym = readSym();
-         //   printf("Here: %s \n",sym);// we don’t do anything here   this would change in pass2
             uselist_symbols.push_back(sym);
         }
         int instcount = readInt();
@@ -282,98 +263,95 @@ void Pass2() {
             int oper = readInt();
             int opcode = oper/1000;
             int operand = oper%1000;
-          //  char* errString;
-          errstring="";
+            errstring="";
             int absolute_add;
             if(opcode>9){
-                if(addressmode!='R')
+                if(addressmode!='I')
                 errstring="Error: Illegal opcode; treated as 9999";
                 else {
                     errstring = "Error: Illegal immediate value; treated as 9999";
                 }
-                printf("%d %d %s\n",memory_map_len,9999,errstring.c_str());
-                memory_map_len++;
-                errstring="";
+                absolute_add=9999;
             }
             else if(addressmode=='R'){ //Relative Adderess+BaseAdd
-                if(operand>instcount){
+                if(operand>=instcount){
                     errstring="Error: Relative address exceeds module size; zero used";
                     operand=0;
                 }
-               absolute_add = opcode*1000+operand+baseAdd;
-                if(absolute_add>=512){
+                if(operand+baseAdd>=512){
                     errstring="Error: Absolute address exceeds machine size; zero used";
                     absolute_add=0;
                 }
-                printf("%d %d %s\n",memory_map_len,absolute_add,errstring.c_str());
-                memory_map_len++;
-                errstring="";
+                else{
+               absolute_add = opcode*1000 + operand + baseAdd;
+                }
             }
             else if(addressmode=='E'){
                 string sym;
-                if(operand>uselist_symbols.size()){
+                if(operand>=uselist_symbols.size()){
                     errstring = "Error: External address exceeds length of uselist; treated as immediate";
-                }
-                  sym = uselist_symbols.at(operand);
-                if (!symtable.count(sym)){
-                    absolute_add = opcode*1000;
-                    std::string someString(sym);
-                    errstring = "Error: "+someString+" is not defined; zero used";
+                    absolute_add = oper;
                 }
                 else {
-                    operand = symtable[sym][1];
-                    absolute_add = opcode * 1000 + operand;
+                    sym = uselist_symbols.at(operand);
+                    if (symtable.empty() || !symtable.count(sym)) {
+                        sym = uselist_symbols.at(operand);
+                        absolute_add = opcode * 1000;
+                        std::string someString(sym);
+                        errstring = "Error: " + someString + " is not defined; zero used";
+                    } else {
+                       operand = symtable[sym][1];
+                        absolute_add = opcode * 1000 + operand;
+                        used_throughout.insert(sym);
+                    }
                     def_used.insert(sym);
-                    used_throughout.insert(sym);
                 }
-                    printf("%d %d %s\n",memory_map_len,absolute_add,errstring.c_str());
-                    memory_map_len++;
-                errstring="";
             }
             else if(addressmode=='A'){
                 absolute_add = opcode*1000+operand;
-                if(absolute_add>=512){
+                if(operand>=512){
                     errstring="Error: Absolute address exceeds machine size; zero used";
-                    absolute_add=0;
+                    absolute_add=opcode*1000;
                 }
-                printf("%d %d %s\n",memory_map_len,absolute_add,errstring.c_str());
-                memory_map_len++;
-                errstring="";
             }
-            else if(addressmode='I'){
+            else if(addressmode=='I'){
                 absolute_add = oper;
-                printf("%d %d %s\n",memory_map_len,absolute_add,errstring.c_str());
-                memory_map_len++;
-                errstring="";
             }
-
+            printf("\n%03d: %04d",memory_map_len,absolute_add,errstring.c_str());
+            if(!errstring.empty())
+                printf(" %s",errstring.c_str());
+            memory_map_len++;
+            errstring="";
         }
         prevMAdd = baseAdd;
         prevML = instcount;
         for(string i : uselist_symbols){
-            if(!def_used.count(i)){
-                printf("Warning: Module %d: %s appeared in the uselist but was not actually used\n",moduleNu,i.c_str());
+            if(def_used.empty() || !def_used.count(i)){
+                printf("\nWarning: Module %d: %s appeared in the uselist but was not actually used",moduleNu,i.c_str());
             }
         }
         uselist_symbols.clear();
         def_used.clear();
     }
-    map<string,vector<int>>::iterator it;
-    for (it = symtable.begin(); it != symtable.end(); it++) {
-        if(!used_throughout.count(it->first)){
-            used_throughout.erase(it->first);
-            printf("Warning: Module %d: %s was defined but never used\n",it->second[0],it->first.c_str());
+    cout<<'\n';
+    map<string,vector<int> >::iterator it;
+    if(!symtable.empty()) { //rule 4
+        for (it = symtable.begin(); it != symtable.end(); it++) {
+            if (!used_throughout.count(it->first)) {
+                used_throughout.erase(it->first);
+                printf("\nWarning: Module %d: %s was defined but never used", it->second[0], it->first.c_str());
+            }
         }
     }
+    cout<<"\n\n";
     }
 
-int main() {
-
-    const char *inputfile = "/Users/sejaldivekar/CLionProjects/Linker1/filename.txt";
-    file = fopen(inputfile, "r");
+int main(int argc, char **argv) {
+    const string inputfile = string(argv[1]);
+    file = fopen(inputfile.c_str(), "r");
     Pass1();
     eofFlag = false;
-    //fclose (file);
     fseek(file, 0, SEEK_SET);
     Pass2();
+    fclose(file);
 }
