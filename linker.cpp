@@ -42,7 +42,7 @@ char * getToken()
 {
     while(!eofFlag) {
         if (tok==NULL) {
-            if (fgets(line, 1024, file) == NULL) {
+            if (fgets(line, 4096, file) == NULL) {
                 lineoffset = lineoffset + tokenlength;
                 eofFlag = true;
                 return NULL;
@@ -74,8 +74,8 @@ bool isNum(char* s){
     if(s==NULL) {
         return false;
     }
-    for (t = s; *t != '\0'; t++) {
-        if(!isdigit(*t)) return false;
+    for (int i=0; i<(strlen(s)); i++){
+        if(!isdigit(s[i])) return false;
     }
     return true;
 }
@@ -107,20 +107,20 @@ char* readSym(){
 }
 
 bool validSym(char *s) {
-    char * t = s;
+   // char * t = s;
     if(s==NULL) {
         return false;
     }
-    if(!isalpha(*t)) {
+    if(!isalpha(s[0])) {
         return false;
     }
-    int size =1;
-    while(*t != '\0')  {
-        if(!isalnum(*t)) return false;
-        t++;
-        size++;
+   // int size =1;
+    for (int i=1; i<(strlen(s)); i++){
+        if(!isalnum(s[i])) return false;
+       // t++;
+      //  size++;
     }
-    if(size>16) {
+    if(strlen(s)>16) {
         __parseerror(3);
         return false;
     }
